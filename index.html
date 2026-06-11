@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Dial Counter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0b0b0d;
+            color: #e2e8f0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .counter-machine {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4rem;
+        }
+
+        /* Giant Round Click Matrix with seamless integrated text */
+        .round-button-housing {
+            width: 250px;
+            height: 250px;
+            background: #141417;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.7),
+                inset 0 2px 3px rgba(255, 255, 255, 0.03),
+                0 0 0 12px #1a1a22;
+            cursor: pointer;
+            position: relative;
+            border: 1px solid #222229;
+            transition: transform 0.05s ease, background-color 0.1s;
+        }
+
+        /* Tactile Blip Compression */
+        .round-button-housing:active {
+            transform: scale(0.95);
+            background: #0f0f12;
+            box-shadow: 
+                0 6px 15px rgba(0, 0, 0, 0.8),
+                inset 0 6px 14px rgba(0, 0, 0, 0.7),
+                0 0 0 12px #15151b;
+        }
+
+        /* Tumbler Window completely blended with the button face */
+        .tumbler-window {
+            display: flex;
+            height: 64px; 
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .digit-col {
+            position: relative;
+            width: 38px;
+            height: 100%;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 4.2rem;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.9);
+            transform-style: preserve-3d;
+        }
+
+        .digit-slot {
+            height: 64px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Upgraded Safe Reset Component with a much larger button */
+        .safe-reset-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+        }
+
+        .pinhole-container {
+            position: relative;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* SVG Progress Arc scaled to fit the larger reset button */
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+            pointer-events: none;
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.1s linear;
+            stroke-dasharray: 194.78; /* 2 * PI * 31 */
+            stroke-dashoffset: 194.78;
+        }
+
+        .pinhole-btn {
+            width: 50px;
+            height: 50px;
+            background: #1a1a22;
+            border: 2px solid #2a2a35;
+            border-radius: 50%;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 
+                0 4px 8px rgba(0,0,0,0.4),
+                inset 0 2px 4px rgba(255,255,255,0.05);
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .pinhole-btn:active {
+            background: #361c1c;
+            border-color: #ef4444;
+            transform: scale(0.96);
+        }
+
+        .reset-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #4a4a52;
+            font-weight: 700;
+            transition: color 0.2s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="counter-machine">
+        <div class="round-button-housing" id="masterCountBtn">
+            <div class="tumbler-window" id="tumblerWindow">
+                <div class="digit-col" id="col-0"><div class="digit-slot">0</div></div>
+            </div>
+        </div>
+
+        <div class="safe-reset-zone">
+            <div class="pinhole-container">
+                <svg class="progress-ring" width="70" height="70">
+                    <circle class="progress-ring__circle" stroke="#ef4444" stroke-width="3" fill="transparent" r="31" cx="35" cy="35"/>
+                </svg>
+                <button class="pinhole-btn" id="safeResetBtn" title="Hold 1.5s to Reset" aria-label="Hold to reset"></button>
+            </div>
+            <span class="reset-label" id="resetLabel">Hold to Reset</span>
+        </div>
+    </div>
+
+    <script>
+        let count = 0;
+        let resetTimer = null;
+        let progressInterval = null;
+        let holdDuration = 0;
+        const targetHoldTime = 1500; 
+
+        const tumblerWindow = document.getElementById('tumblerWindow');
+        const masterCountBtn = document.getElementById('masterCountBtn');
+        const safeResetBtn = document.getElementById('safeResetBtn');
+        const resetLabel = document.getElementById('resetLabel');
+        const progressCircle = document.querySelector('.progress-ring__circle');
+        
+        const circleCircumference = 2 * Math.PI * 31;
+
+        function updateDisplay(animate = true) {
+            const countStr = count.toString();
+            const currentCols = tumblerWindow.children.length;
+            const targetCols = countStr.length;
+
+            if (targetCols > currentCols) {
+                for (let i = currentCols; i < targetCols; i++) {
+                    const col = document.createElement('div');
+                    col.className = 'digit-col';
+                    col.id = `col-${i}`;
+                    tumblerWindow.insertBefore(col, tumblerWindow.firstChild);
+                }
+            } else if (targetCols < currentCols) {
+                while (tumblerWindow.children.length > targetCols) {
+                    tumblerWindow.removeChild(tumblerWindow.firstChild);
+                }
+            }
+
+            const reversedStr = countStr.split('').reverse().join('');
+            const columns = Array.from(tumblerWindow.children).reverse();
+
+            columns.forEach((col, index) => {
+                const targetDigit = reversedStr[index];
+                const currentDigit = col.lastChild ? col.lastChild.textContent : null;
+
+                if (currentDigit !== targetDigit) {
+                    if (animate) {
+                        const nextSlot = document.createElement('div');
+                        nextSlot.className = 'digit-slot';
+                        nextSlot.textContent = targetDigit;
+                        col.appendChild(nextSlot);
+
+                        col.style.transition = 'transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.2)';
+                        col.style.transform = `translateY(-64px)`;
+
+                        setTimeout(() => {
+                            col.style.transition = 'none';
+                            col.style.transform = 'translateY(0)';
+                            while (col.children.length > 1) {
+                                col.removeChild(col.firstChild);
+                            }
+                        }, 180);
+                    } else {
+                        col.innerHTML = `<div class="digit-slot">${targetDigit}</div>`;
+                    }
+                }
+            });
+        }
+
+        // Increment Action
+        masterCountBtn.addEventListener('click', () => {
+            count++;
+            updateDisplay(true);
+        });
+
+        // Fail-safe Hold Logic Functions
+        function setProgress(percent) {
+            const offset = circleCircumference - (percent / 100) * circleCircumference;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        function startResetSequence(e) {
+            e.preventDefault();
+            holdDuration = 0;
+            setProgress(0);
+            resetLabel.style.color = '#ef4444';
+
+            progressInterval = setInterval(() => {
+                holdDuration += 50;
+                const percent = (holdDuration / targetHoldTime) * 100;
+                setProgress(Math.min(percent, 100));
+
+                if (holdDuration >= targetHoldTime) {
+                    clearInterval(progressInterval);
+                    clearTimeout(resetTimer);
+                    executeReset();
+                }
+            }, 50);
+        }
+
+        function cancelResetSequence() {
+            clearInterval(progressInterval);
+            clearTimeout(resetTimer);
+            setProgress(0);
+            resetLabel.style.color = '#4a4a52';
+        }
+
+        function executeReset() {
+            count = 0;
+            updateDisplay(false);
+            setProgress(0);
+            resetLabel.style.color = '#4a4a52';
+        }
+
+        // Event listeners handling Desktop and Mobile Touch environments smoothly
+        safeResetBtn.addEventListener('mousedown', startResetSequence);
+        safeResetBtn.addEventListener('mouseup', cancelResetSequence);
+        safeResetBtn.addEventListener('mouseleave', cancelResetSequence);
+
+        safeResetBtn.addEventListener('touchstart', startResetSequence, { passive: false });
+        safeResetBtn.addEventListener('touchend', cancelResetSequence);
+    </script>
+</body>
+</html>
