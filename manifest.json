@@ -1,6 +1,6 @@
 {
-  "name": "Tactile Counter",
-  "short_name": "Counter",
+  "name": "Sal-Tas",
+  "short_name": "Saltas",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0b0d",
