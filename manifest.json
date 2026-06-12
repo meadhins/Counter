@@ -1,6 +1,6 @@
 {
   "name": "Sal-Tas",
-  "short_name": "Saltas",
+  "short_name": "SalTas",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0b0d",
@@ -8,10 +8,14 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3208/3208741.png",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
